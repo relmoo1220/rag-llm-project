@@ -21,8 +21,8 @@ client = chromadb.PersistentClient(
 # Load the collection by name
 collection = client.get_collection("document_collection")
 
-tokenizer = AutoTokenizer.from_pretrained("sentence-transformers/all-MiniLM-L6-v2")
-model = AutoModel.from_pretrained("sentence-transformers/all-MiniLM-L6-v2")
+tokenizer = AutoTokenizer.from_pretrained("sentence-transformers/all-distilroberta-v1")
+model = AutoModel.from_pretrained("sentence-transformers/all-distilroberta-v1")
 
 pipe = pipeline("text2text-generation", model="google/flan-t5-large")
 
@@ -34,33 +34,37 @@ def get_embeddings(texts):
      return embeddings
 
 # Function to query ChromaDB
-def query_db(question, collection, top_k=5):
+def query_db(question, collection, top_k=3):
      q_embeddings = get_embeddings([question])
      results = collection.query(query_embeddings=q_embeddings.numpy().tolist(), n_results=top_k)
      return ' '.join(results['documents'][0])
 
 @app.get("/")
 def read_root():
-    question = "Did harry potter beat voldermort?"
+    question = "Did harry potter defeat voldermort"
     
     # First pass: Initial context retrieval
     context = query_db(question, collection)
     
     # First pass: Generate initial answer
-    input_text = f"Given the following context, please provide a detailed answer to the question: '{question}'. Context: {context}."
-    result = pipe(input_text, max_new_tokens=300, temperature=0.7, top_k=50)
+    input_text = (
+        f"Based on the following context, please provide a unique answer to the question '{question}' without quoting directly: "
+        f"Context: {context}."
+    )
+    result = pipe(input_text, max_new_tokens=300, do_sample=True, temperature=0.5, top_k=50)
     first_answer = result[0]['generated_text']
+    print(context)
 
     # Second pass: Use the initial answer to refine the query
-    refined_question = f"{first_answer} Can you provide more details?"
-    refined_context = query_db(refined_question, collection)
+    # refined_question = f"{first_answer} Can you provide more details?"
+    # refined_context = query_db(refined_question, collection)
     
-    # Second pass: Generate the final answer with more refined context
-    refined_input_text = f"Based on the refined context, elaborate on the question: '{refined_question}'. Refined Context: {refined_context}."
-    refined_result = pipe(refined_input_text, max_new_tokens=300, do_sample=True, temperature=0.7, top_k=50)
-    final_answer = refined_result[0]['generated_text']
+    # # Second pass: Generate the final answer with more refined context
+    # refined_input_text = f"Based on the refined context, elaborate on the question: '{refined_question}'. Refined Context: {refined_context}."
+    # refined_result = pipe(refined_input_text, max_new_tokens=300, do_sample=True, temperature=0.7, top_k=50)
+    # final_answer = refined_result[0]['generated_text']
 
-    return {"initial_answer": first_answer, "final_answer": final_answer}
+    return {"initial_answer": first_answer}
 
 
 @app.get("/items/{item_id}")

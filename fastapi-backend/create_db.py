@@ -10,8 +10,8 @@ import string
 dataset = "./dataset/harrypotter.pdf"
 persist_directory = "./chroma_persistence"
 
-tokenizer = AutoTokenizer.from_pretrained("sentence-transformers/all-MiniLM-L6-v2")
-model = AutoModel.from_pretrained("sentence-transformers/all-MiniLM-L6-v2")
+tokenizer = AutoTokenizer.from_pretrained("sentence-transformers/all-distilroberta-v1")
+model = AutoModel.from_pretrained("sentence-transformers/all-distilroberta-v1")
 
 # Function to extract text from PDF
 def extract_text_from_pdf(pdf_path):
@@ -37,8 +37,8 @@ def normalize_text(text):
 
 # Initialize LangChain's RecursiveCharacterTextSplitter
 text_splitter = RecursiveCharacterTextSplitter(
-    chunk_size=512,         # Set your desired chunk size
-    chunk_overlap=20,       # Set the overlap between chunks
+    chunk_size=384,         # Set your desired chunk size
+    chunk_overlap=40,       # Set the overlap between chunks
     length_function=len     # Define the length function to use
 )
 
