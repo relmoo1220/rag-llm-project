@@ -1,7 +1,6 @@
 from typing import Union
 from fastapi import FastAPI
 from transformers import AutoTokenizer, AutoModel, pipeline
-from langchain.text_splitter import RecursiveCharacterTextSplitter
 import torch
 import chromadb
 from chromadb.config import DEFAULT_TENANT, DEFAULT_DATABASE, Settings
@@ -28,45 +27,48 @@ pipe = pipeline("text2text-generation", model="google/flan-t5-large")
 
 # Embedding Function
 def get_embeddings(texts):
-     inputs = tokenizer(texts, padding=True, truncation=True, return_tensors="pt")
-     with torch.no_grad():
+    inputs = tokenizer(texts, padding=True, truncation=True, return_tensors="pt")
+    with torch.no_grad():
         embeddings = model(**inputs).last_hidden_state.mean(dim=1)
-     return embeddings
+    return embeddings
 
 # Function to query ChromaDB
-def query_db(question, collection, top_k=3):
-     q_embeddings = get_embeddings([question])
-     results = collection.query(query_embeddings=q_embeddings.numpy().tolist(), n_results=top_k)
-     return ' '.join(results['documents'][0])
+def query_db(question, collection, top_k=2):
+    q_embeddings = get_embeddings([question])
+    results = collection.query(query_embeddings=q_embeddings.numpy().tolist(), n_results=top_k)
+    return ' '.join(results['documents'][0])
 
 @app.get("/")
 def read_root():
-    question = "Did harry potter defeat voldermort"
-    
+    question = "In 2013, what is AAPL's revenue?"
+
     # First pass: Initial context retrieval
     context = query_db(question, collection)
-    
+
+    # Define the template for financial metric units
+    template = (
+        "Please note the following units for the financial metrics: "
+        "Market Cap is in billions of USD, "
+        "Revenue is in millions of USD, "
+        "Gross Profit is in millions of USD, "
+        "Net Income is in millions of USD, "
+        "Earning Per Share is in USD. "
+        "EBITDA is in millions of USD"
+        "Share Holder Equity is in millions of USD"
+        "Cash Flow from Operating is in millions of USD"
+        "Cash Flow from Investing is in millions of USD"
+        "Cash Flow from Financial Activities is in millions of USD"
+        "Free Cash Flow per Share is in USD"
+        "Now, based on the provided context, please answer the question and include the units."
+    )
+
     # First pass: Generate initial answer
     input_text = (
-        f"Based on the following context, please provide a unique answer to the question '{question}' without quoting directly: "
-        f"Context: {context}."
+        f"{template}\n\nContext: {context}\n\nQuestion: {question}"
     )
     result = pipe(input_text, max_new_tokens=300, do_sample=True, temperature=0.5, top_k=50)
-    first_answer = result[0]['generated_text']
+    answer = result[0]['generated_text']
     print(context)
+    print(answer)
 
-    # Second pass: Use the initial answer to refine the query
-    # refined_question = f"{first_answer} Can you provide more details?"
-    # refined_context = query_db(refined_question, collection)
-    
-    # # Second pass: Generate the final answer with more refined context
-    # refined_input_text = f"Based on the refined context, elaborate on the question: '{refined_question}'. Refined Context: {refined_context}."
-    # refined_result = pipe(refined_input_text, max_new_tokens=300, do_sample=True, temperature=0.7, top_k=50)
-    # final_answer = refined_result[0]['generated_text']
-
-    return {"initial_answer": first_answer}
-
-
-@app.get("/items/{item_id}")
-def read_item(item_id: int, q: Union[str, None] = None):
-    return {"item_id": item_id, "q": q}
+    return {"answer": answer}
