@@ -1,2 +1,11 @@
-<h1>Welcome to SvelteKit</h1>
-<p>Visit <a href="https://kit.svelte.dev">kit.svelte.dev</a> to read the documentation</p>
+<script lang="ts">
+  import ChatArea from "$lib/components/ui/chatarea/ChatArea.svelte";
+import ChatMessage from "$lib/components/ui/chatmessage/ChatMessage.svelte";
+
+
+</script>
+
+<div class="flex flex-col w-screen h-screen justify-start items-center bg-primary text-secondary">
+    <h1 class="font-bold-2xl text-2xl p-3">💸 Simple RAG LLM Application on Financial Data 💸</h1>
+    <ChatArea />
+</div>

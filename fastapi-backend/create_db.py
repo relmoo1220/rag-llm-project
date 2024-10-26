@@ -4,6 +4,7 @@ import chromadb
 from chromadb.config import DEFAULT_TENANT, DEFAULT_DATABASE, Settings
 import pandas as pd
 import re
+import json
 
 # Dataset paths
 dataset = [
@@ -11,23 +12,18 @@ dataset = [
 ]
 persist_directory = "./chroma_persistence"
 
-tokenizer = AutoTokenizer.from_pretrained("sentence-transformers/all-distilroberta-v1")
-model = AutoModel.from_pretrained("sentence-transformers/all-distilroberta-v1")
+# Load tokenizer and model
+tokenizer = AutoTokenizer.from_pretrained("Alibaba-NLP/gte-large-en-v1.5", trust_remote_code=True)
+model = AutoModel.from_pretrained("Alibaba-NLP/gte-large-en-v1.5", trust_remote_code=True)
 
-# Function to read CSV and normalize text row by row with headers
-def extract_text_from_csv(csv_path):
-    rows_text = []
+# Function to read CSV and convert it to a DataFrame
+def load_csv_to_dataframe(csv_path):
     try:
         df = pd.read_csv(csv_path)
-        headers = df.columns.tolist()  # Get the headers
-
-        for index, row in df.iterrows():
-            # Combine the header and corresponding row values into a single string
-            row_text = ' '.join(f"{header}: {row[header]}" for header in headers)
-            rows_text.append(row_text)  # Append the formatted row text
+        return df
     except Exception as e:
         print(f"Error reading {csv_path}: {e}")
-    return rows_text  # Return a list of row texts
+        return None  # Return None if there is an error
 
 # Function to normalize text
 def normalize_text(text):
@@ -58,26 +54,55 @@ collection = client.create_collection(name="document_collection")
 for doc in dataset:
     csv_path = doc["path"]
 
-    # Extract text from the CSV row by row with headers
-    rows_text = extract_text_from_csv(csv_path=csv_path)
+    # Load the CSV data into a DataFrame
+    df = load_csv_to_dataframe(csv_path=csv_path)
 
-    # Process each row
-    for i, row_text in enumerate(rows_text):
-        # Normalize the text for each row
-        normalized_text = normalize_text(row_text)
+    if df is not None:
+        # Process each row in the DataFrame
+        for i, row in df.iterrows():
+            # Create a dictionary for the current row
+            row_data = {
+                "Year": int(row["Year"]),  # Ensure Year is an integer
+                "Company": row["Company"],
+                "Category": row["Category"],
+                "Market Cap (B USD)": float(row["Market Cap(in B USD)"]),
+                "Revenue": float(row["Revenue"]),
+                "Gross Profit": float(row["Gross Profit"]),
+                "Net Income": float(row["Net Income"]),
+                "Earning Per Share": float(row["Earning Per Share"]),
+                "EBITDA": float(row["EBITDA"]),
+                "Share Holder Equity": float(row["Share Holder Equity"]),
+                "Cash Flow from Operating": float(row["Cash Flow from Operating"]),
+                "Cash Flow from Investing": float(row["Cash Flow from Investing"]),
+                "Cash Flow from Financial Activities": float(row["Cash Flow from Financial Activities"]),
+                "Current Ratio": float(row["Current Ratio"]),
+                "Debt/Equity Ratio": float(row["Debt/Equity Ratio"]),
+                "ROE": float(row["ROE"]),
+                "ROA": float(row["ROA"]),
+                "ROI": float(row["ROI"]),
+                "Net Profit Margin": float(row["Net Profit Margin"]),
+                "Free Cash Flow per Share": float(row["Free Cash Flow per Share"]),
+                "Return on Tangible Equity": float(row["Return on Tangible Equity"]),
+                "Number of Employees": int(row["Number of Employees"]),
+                "Inflation Rate (US)": float(row["Inflation Rate(in US)"])
+            }
 
-        # Get embeddings for the row text directly
-        embedding = get_embeddings([normalized_text])  # Get the embedding for the entire row
+            # Convert the row data dictionary to a JSON string
+            normalized_text = normalize_text(json.dumps(row_data))  # Convert dictionary to JSON string
 
-        # Create a unique ID for each row
-        unique_id = f"row_{i}"
+            # Get embeddings for the normalized text
+            embedding = get_embeddings([normalized_text])
 
-        # Insert the row and its embedding into ChromaDB
-        collection.add(
-            ids=[unique_id],
-            documents=[normalized_text],     # Add the normalized row text
-            embeddings=embedding.numpy()     # Add the corresponding embedding
-        )
-        print(unique_id)
+            # Create a unique ID for each row
+            unique_id = f"row_{i}"
+
+            # Insert the row and its embedding into ChromaDB
+            collection.add(
+                ids=[unique_id],
+                documents=[normalized_text],     # Add the normalized JSON string
+                embeddings=embedding.numpy()     # Add the corresponding embedding
+            )
+            print(f"Inserted: {unique_id}")
+            print(row_data)
 
 print("ChromaDB persistence complete!")
