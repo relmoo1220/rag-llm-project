@@ -1,12 +1,44 @@
-# rag-llm-project
+# Simple Finance RAG LLM ChatBot (Still Work-In-Progress)
 
-### Text2Text Generation Model
+A simple chatbot that enables users to query financial statements of major companies from 2009 to 2022. This Retrieval-Augmented Generation (RAG) application integrates a SvelteKit frontend, FastAPI backend, and ChromaDB as a vector database to power efficient and relevant financial queries. Using Hugging Face’s Transformers, the app leverages a question-answering model to provide accurate responses based on extracted document data.
+
+### Technology Stack
+
+- Frontend: SvelteKit for an interactive and responsive UI.
+- Backend: FastAPI for fast, asynchronous API handling.
+- Database: ChromaDB as a high-performance vector store.
+- Model: Hugging Face Transformers for financial Q&A capabilities.
+
+### Installation
+
+Creating a virtual environment
 
 ```
+python -m venv venv
+venv\Scripts\activate
 pip install -r requirements.txt
 ```
+
+Starting the backend
 
 ```
 cd .\fastapi-backend\
 fastapi dev main.py
 ```
+
+Starting the frontend
+
+```
+cd .\frontend\
+npm install
+npm run dev
+```
+
+### Current Models In-Use
+
+- **Alibaba-NLP/gte-large-en-v1.5**: A sentence similarity model used to generate embeddings for the financial documents. These embeddings are stored in ChromaDB, enabling the chatbot to perform efficient, contextually relevant search and retrieval of information.
+
+- **deepset/roberta-base-squad2**: A question-answering model fine-tuned on SQuAD2.0, used to interpret user queries. It processes relevant sections retrieved from ChromaDB to generate accurate responses to finance-related questions, providing an interactive, LLM-powered Q&A experience.
+
+> [!NOTE]
+> Will set up docker in the future as it is currently work-in-progress
